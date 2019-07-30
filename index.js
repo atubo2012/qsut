@@ -656,7 +656,7 @@ exports.isJsonString=function(str) {
         }
     } catch(e) {
     }
-    return false;
+    return false ;
 };
 
 /**
