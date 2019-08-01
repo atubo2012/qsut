@@ -678,4 +678,4 @@ let getNewExpiredDate = function (oldExpiredDate,addedDays){
 exports.getNewExpiredDate = function (oldExpiredDate,addedDays) {
     return getNewExpiredDate(oldExpiredDate,addedDays);
 };
-console.log(getNewExpiredDate(new Date('2019-08-12'),30));
+//console.log(getNewExpiredDate(new Date('2019-08-12'),30));
