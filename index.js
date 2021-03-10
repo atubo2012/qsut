@@ -1,48 +1,12 @@
-exports.printMsg = function () {
-    console.log("This is a message from the demo package");
-};
-
-exports.getDburl = function (url) {
-    f = require('util').format;
-    assert = require('assert');
-
-    let user = encodeURIComponent('myTester');
-    let password = encodeURIComponent('xyz123');
-    let authMechanism = 'DEFAULT';
-    url = f(url, user, password, authMechanism);
-
-    console.log("This is a message from the demo package");
-    return url;
-};
-
 /**
- * 生成ID
- * @param idPrefix，id前缀，默认无前缀，
- * @param rslength，随机生成后缀的长度
- * @param jinzhi，表示进制的数字，如32,16,8
- * @returns {string}
+ * Doc is created by JsDoc
+ * https://jsdoc.app
  */
-let getId = function (idPrefix, rslength, jinzhi) {
-    //console.log(postFix);
-    let ts = parseInt((new Date().getTime()).toFixed(0));
 
-    let postFix = rslength ? randomString(rslength) : '';
+// Part 1. Logger
 
-    if(jinzhi||10){
-        ts = ts.toString(jinzhi).toUpperCase();
-    }
-    return  (idPrefix || '') + ts + postFix;
 
-};
-
-exports.getId32 = function (idPrefix, rslength) {
-    return getId(idPrefix, rslength,32)
-};
-exports.getId = function (idPrefix, rslength,jinzhi) {
-    return getId(idPrefix, rslength,jinzhi)
-};
-
-//logger handle
+//Prepare configuration of logger handle
 let logConfig = {
     appenders: {
         out: {type: 'stdout'},
@@ -62,26 +26,122 @@ exports.logger = function (name) {
     return logger(name);
 };
 let l = logger('utils');
-//l.info('this is utils');
+
+
+/**
+ * Part 2. ID
+ */
+
+
+/**
+ * Generate a customized ID with 3 parts : prefix(optional),random,postfix
+ * @param idPrefix {String}
+ *      '' as default,usually named according business module
+ * @param rslength {int}
+ *      length of random part which is composed of digits and letters
+ * @param jinzhi {int}
+ *      [10,36] used to convert current time  to a SHORT string . Maximum is 36.
+ * @returns {string} a random ID
+ */
+exports.getId = function (idPrefix, rslength,jinzhi) {
+    return getId(idPrefix, rslength,jinzhi)
+};
+let getId = function (idPrefix, rslength, jinzhi) {
+    //console.log(postFix);
+    let ts = parseInt((new Date().getTime()).toFixed(0));
+
+    let postFix = rslength ? randomString(rslength) : '';
+
+    if(jinzhi||10){
+        ts = ts.toString(jinzhi).toUpperCase();
+    }
+    return  (idPrefix || '') + ts + postFix;
+};
+
+/**
+ * Generate a customized ID with 3 parts : prefix(optional),random,postfix
+ * @param idPrefix  '' as default,usually named according business module
+ * @param rslength length of random part which is composed of digits and letters
+ * @returns {string} a random ID
+ */
+exports.getId32 = function (idPrefix, rslength) {
+    return getId(idPrefix, rslength,32)
+};
+
+
+/**
+ * Get a random string with specific length
+ * @param len {int} 32 as default
+ * @returns {string} a random string
+ */
+exports.randomString = function (len) {
+    return randomString(len);
+};
+let randomString = function (len) {
+    len = len || 32;    //这个默认复制的方式很帅
+    let chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
+    /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
+    let maxPos = chars.length;
+    let pwd = '';
+    for (let i = 0; i < len; i++) {
+        pwd += chars.charAt(Math.floor(Math.random() * maxPos));
+    }
+    return pwd.toUpperCase();
+};
+
+
 
 
 
 /**
- * 将日期格式化
+ * Part 3. Date
+ */
+
+/**
+ * Format date
+ * @param date {Date} eg: new Date()
+ * @param style {String} eg: 'yyyyMMdd'|'hhmmss'
+ * @returns {string} eg: '20210309' | '123001'
  */
 exports.formatDate = function(date, style) {
     return fmd(date,style);
 };
 
 /**
- * 取得今天的日期
+ * Get yyyyMMdd format date
+ * @returns {string} eg: '20210309'
  */
 exports.getToday = function() {
     return fmd(new Date(),'yyyyMMdd');
 };
 
 /**
- * 取得现在的时间
+ * Get new expiry date
+ * @param oldExpiredDate {Date} original expiry date
+ * @param addedDays {int} Days postponed
+ * @returns {Date} new expiry date
+ */
+let getNewExpiredDate = function (oldExpiredDate,addedDays){
+    let today = new Date();
+    let old_expired_date_ms = oldExpiredDate.getTime();
+
+    //如原到期日晚于当前，则基于原到期日延长addedDays日，返回新的到期日
+    //如原到期日早于当前，则基于当前日期延长
+    let new_expired_date = (
+        old_expired_date_ms >= today.getTime() ?
+            oldExpiredDate.setDate(new Date(old_expired_date_ms).getDate()+addedDays) :
+            today.setDate(today.getDate()+addedDays)
+    );
+    return new Date(new_expired_date);//.toLocaleDateString();
+};
+exports.getNewExpiredDate = function (oldExpiredDate,addedDays) {
+    return getNewExpiredDate(oldExpiredDate,addedDays);
+};
+
+
+/**
+ * Get hhmmss format time
+ * @returns {string} eg: '123001'
  */
 exports.getNow = function() {
     return fmd(new Date(),'hhmmss');
@@ -103,135 +163,13 @@ function fmd(date, style) {
 }
 
 /**
- * 导出形如excel文件
- * @param dataArray 数组类型的数据
- * @param path 以/结尾的路径名
- * @param filename 文件名
- */
-exports.exp2xls = function(dataArray,path,filename) {
-
-    let xlsx = require('node-xlsx');
-    let fs = require('fs');
-
-    log('开始生成EXCEL');
-    let file = xlsx.build([{
-        name: 'sheet1',
-        data: dataArray
-    }]);   //构建xlsx对象
-
-    fs.writeFileSync(path+filename+'.xlsx', file, 'binary'); // 写入
-    log('完成生成EXCEL');
-};
-
-/**
- * 将对象的value转换成数组
- * 如果要将key转换成数组，就push(item)
- */
-function obj2Array (obj) {
-    let arr = [];
-    for (let itm in obj) {
-        arr.push(obj[itm]);
-    }
-    return arr;
-}
-exports.obj2Array = function(obj){
-    return obj2Array(obj);
-};
-
-
-/**
- * 按照数组keys的顺序将对象中的值转换成素组
- * @param obj
- * @param keys
- * @returns {Array}
- */
-function obj2ArrayByOrder (obj,keys) {
-    let arr = [];
-    //遍历keys，并将
-    keys.forEach(function (item) {
-        arr.push(obj[item])
-    }) ;
-    return arr;
-}
-exports.obj2ArrayByOrder=function(obj,keys){
-    return obj2ArrayByOrder(obj,keys);
-};
-obj2ArrayByOrder({'a':'a1','b':'b1'},['b','a']);
-
-
-/**
- * 将对象数组转化为元素为数组的数组
- * @param objArray
- * @returns {Array}
- */
-exports.objArray2Array =function (objArray) {
-    let ret = [];
-    objArray.forEach(function (item) {
-        ret.push(obj2Array(item));
-    });
-    return ret;
-};
-
-
-/**
- * 检查一个字符串是否为数字
- * @param str
- * @returns {boolean}
- */
-exports.isNumber = function (str) {
-    let a = parseFloat(str);
-
-    // if(isNaN(a)){
-    //     //log(str +' is not number '+a);
-    //     return false;
-    // }else{
-    //     //log(str +' is  number '+a);
-    //     return true;
-    // }
-
-    return !isNaN(a);
-};
-
-/**
- * 读取指定文件的内容
- * @param filename
- * @returns {Buffer | string}
- */
-exports.rf = function (filename) {
-    return require('fs').readFileSync(filename,'utf8');
-};
-/**
- * 向文件中写入指定的内容
- * @param filename
- * @param content
- */
-exports.wf = function (filename,content) {
-    let fs = require('fs');
-    fs.writeFileSync(filename, content, 'utf8', function(err) {
-        if (err) {
-            console.error('写入文件时发生错误',err);
-        }
-    });
-};
-
-/**
- * 向指定文件中以追加模式写入内容
- * @param filename
- * @param content
- */
-exports.af = function(filename,content){
-    let fs = require('fs');
-    fs.appendFileSync(filename,content,'utf-8',(err)=>{
-        if(err) throw err;
-        console.log('写入文件时发生错误',err);
-    });
-};
-
-/**
  * 当前时刻与指定时刻的差。
  * @param timer hhmm格式，表示小时分钟
  * @returns {number} 毫秒， >=0表示已过期，<0表示尚未过期
  */
+exports.getTimeDiffrence = function(timer){
+    return getTimeDiffrence(timer);
+};
 function getTimeDiffrence(timer) {
 
     //设置then的时间对象
@@ -243,61 +181,263 @@ function getTimeDiffrence(timer) {
     //计算当前时间与then的时差
     return (new Date() - then);
 }
-exports.getTimeDiffrence = function(timer){
-    return getTimeDiffrence(timer);
+
+
+/**
+ * 功能：判断参数中的时间点是否晚于当前时间点
+ * @param then
+ * @returns {boolean}
+ */
+exports.isLateThanNow=function(then){
+    let thenDate = new Date(then);
+    let now = new Date();
+
+    l.trace('thenDate:'+thenDate,'nowDate:'+now);
+    return thenDate.getTime()-now.getTime()>0
 };
+
+/**
+ * 功能：获得比当前时间点晚若干小时的时间对象
+ * @param hours 小时数
+ * @param hasSecond time 中是否包含秒
+ * @returns {{date: string, time: string}}
+ */
+exports.getLater=function(hours,hasSecond){
+    let then= new Date(new Date().getTime()+hours*60*60*1000);
+    let thenTime = fmd(then,'hh:mm:ss');
+
+    let ret = {date:fmd(then,'yyyy-MM-dd'),time:hasSecond ? thenTime:thenTime.substring(0,thenTime.lastIndexOf(':'))};
+
+    l.trace('那时',then,'结果',ret);
+    return ret ;
+};
+
+/**
+ * Checking if specific time has passed.
+ * @param timer {String} 'hhmm'
+ * @returns {boolean}
+ */
+exports.isTimeOut = function(timer){
+    return getTimeDiffrence(timer)>0 ;
+};
+
+
+
+// Part 4. Convertion between string and objects
+
+
+/**
+ * Convert elements' values in a object into a array
+ * @param obj {object}
+ * @returns {Array}
+ */
+exports.obj2Array = function(obj){
+    return obj2Array(obj);
+};
+function obj2Array (obj) {
+    let arr = [];
+    for (let itm in obj) {
+        arr.push(obj[ itm ]);
+    }
+    return arr;
+}
+
+
+
+/**
+ * 按照数组keys的顺序将对象中的值转换成素组
+ * Convert values of obj into an array and be in order of array keys'
+ * @param obj
+ * @param keys
+ * @returns {Array}
+ */
+exports.obj2ArrayByOrder=function(obj,keys){
+    return obj2ArrayByOrder(obj,keys);
+};
+function obj2ArrayByOrder (obj,keys) {
+    let arr = [];
+    keys.forEach(function (item) {
+        arr.push(obj[item])
+    }) ;
+    return arr;
+}
+
+
+/**
+ * 将对象数组转化为元素为数组的数组
+ * Save all values in an object array into an new array
+ * @param objArray
+ * @returns {Array}
+ */
+exports.objArray2Array =function (objArray) {
+    let ret = [];
+    objArray.forEach(function (item) {
+        ret.push(obj2Array(item));
+    });
+    return ret;
+};
+
+/**
+ * Check if str is JSON format
+ * 参考：https://blog.csdn.net/qq_26400953/article/details/77411520
+ * @param str {string}
+ * @returns {boolean}
+ *
+ */
+exports.isJsonString=function(str) {
+    try {
+        l.trace(str);
+        const type = typeof(JSON.parse(str));
+        if ( type === "object") {
+            return true;
+        }
+    } catch(e) {
+        l.error(e.toString());
+    }
+    return false ;
+};
+
+/**
+ * Check if str is a Number
+ * @param str {String | Number}
+ * @returns {boolean}
+ */
+exports.isNumber = function (str) {
+    let a = parseFloat(str);
+    return !isNaN(a);
+};
+
+
+/**
+ * Part 5. File
+ */
+
+/**
+ * Read from a file
+ * @param filename with path
+ * @returns {Buffer | String}
+ */
+exports.rf = function (filename) {
+    return require('fs').readFileSync(filename,'utf8');
+};
+/**
+ * Write to a file
+ * @param filename
+ * @param content  {String}
+ */
+exports.wf = function (filename,content) {
+    let fs = require('fs');
+    fs.writeFileSync(filename, content, 'utf8', function(err) {
+        if (err) {
+            console.error('写入文件时发生错误',err);
+        }
+    });
+};
+
+/**
+ * Append content to a file
+ * @param filename with path
+ * @param content {String}
+ */
+exports.af = function(filename,content){
+    let fs = require('fs');
+    fs.appendFileSync(filename,content,'utf-8',(err)=>{
+        if(err) throw err;
+        console.log('写入文件时发生错误',err);
+    });
+};
+
+
+/**
+ * Generate a .xlsx file from a array including multiple rows
+ * @param dataArray {Array} eg:[[1,3],['aa','bb'],[3,'dd']]
+ * @param path {String} file path ended with /
+ * @param filename {String} not need to include .xlsx in filename
+ */
+exports.exp2xls = function(dataArray,path,filename) {
+    let xlsx = require('node-xlsx');
+    let fs = require('fs');
+
+    l.info('开始生成EXCEL');
+    let file = xlsx.build([{
+        name: 'sheet1',
+        data: dataArray
+    }]);   //构建xlsx对象
+
+    fs.writeFileSync(path+filename+'.xlsx', file, 'binary'); // 写入
+    l.info('完成生成EXCEL');
+};
+
+
+/**
+ * Part 6. Enrypt and Decrypt
+ */
+
 
 //加密函数参考：https://nodejs.org/dist/latest-v6.x/docs/api/crypto.html#crypto_class_cipher
 const crypto = require('crypto');
 
 /**
- * 检查是否为有效的算法。
- * @param alg
+ * Checking if specified algorithm is available
+ * @param alg ['aes192','aes-128-ecb','aes-256-cbc']
+ * You can check available algorithm in OS with following  command
+ * ···
+ * openssl list-cipher-algorithms
+ * ···
+ * reference：https://blog.csdn.net/LVXIANGAN/article/details/42195429
  */
 function isValidAlg(alg) {
-    //可通过命令查看OS支持的算法：openssl list-cipher-algorithms
     const algs = ['aes192','aes-128-ecb','aes-256-cbc'];
-
-    const err = alg+'不是可选的算法，应为'+algs+'内的算法之一';
+    const err = alg+'is not available algorithm ，only support'+algs;
     if(algs.indexOf(alg)<0) throw err;
 }
 
 /**
- * 对称加解密函数
- * @param data
- * @param key
- * @param aesType
- * @param codeType
- * @returns {*}
+ * Encrypt data
+ * @param data Data being encrypted
+ * @param key Password used to encrypt data
+ * @param aesType Support ['aes192','aes-128-ecb','aes-256-cbc']
+ * @param codeType hex/base64
+ * @returns {String} Encrypted Data
  */
+exports.aesEncrypt= function(data,key,aesType,codeType){
+    return aesEncrypt(data,key,aesType,codeType);
+};
 function aesEncrypt(data,key,aesType,codeType){
     isValidAlg(aesType);
     const cipher = crypto.createCipher(aesType,key);
     let crypted = cipher.update(data,'utf8',codeType);
     return crypted+cipher.final(codeType);
 }
-exports.aesEncrypt= function(data,key,aesType,codeType){
-    return aesEncrypt(data,key,aesType,codeType);
-};
 
+
+/**
+ * Decrypt Data
+ * @param encryptedData Dncrypted Data
+ * @param key Password used to encrypt data
+ * @param aesType Support ['aes192','aes-128-ecb','aes-256-cbc']
+ * @param codeType hex/base64
+ * @returns {String} Decrypted Data
+ */
+exports.aesDecrypt= function(encryptedData,key,aesType,codeType){
+    return aesDecrypt(encryptedData,key,aesType,codeType);
+};
 function aesDecrypt(encryptedData,key,aesType,codeType){
     isValidAlg(aesType);
     const decipher = crypto.createDecipher(aesType,key);
     let decrypted = decipher.update(encryptedData,codeType,'utf8');
     return decrypted+decipher.final('utf8');
 }
-exports.aesDecrypt= function(encryptedData,key,aesType,codeType){
-    return aesDecrypt(encryptedData,key,aesType,codeType);
-};
+
 
 /**
- *
- * @param data 原文
+ * Generate a Hash
+ * @param data
  * @param hashType md5/hmac
  * @param algType md5/sha1/sha256/sha512
  * @param codeType hex/base64
  * @param key hmac使用的key
- * @returns {Buffer | string | * | any}
+ * @returns {Buffer | string | * }
  */
 function getHash(data,hashType,algType,codeType,key){
     let ret = null;
@@ -316,73 +456,18 @@ exports.getHash= function(data,hashType,algType,codeType,key){
 
 
 /**
- * 功能：对文件名进行规范化
- * 场景：根据聊天内容写入文件
- * @param fileName 与文件名相关的内容
- * @returns {string}
+ * Part 7. Http and Network
  */
-exports.normalizeFileName = function(fileName){
-    //暂不替换中文标点符号:.，。？
-    let ret = fileName.replace(/[":&#$*|><,?\/\+\\\[\]]/g,'');
-    if(ret.length>=250)
-        ret = ret.substring(0,250);
-    //参考：https://www.cnblogs.com/moqing/archive/2016/07/13/5665126.html
-    //http://www.jb51.net/article/110516.htm
-    //http://www.jb51.net/article/84784.htm
-    //http://www.jb51.net/article/80544.htm
-    //console.log('原文件名',fileName);
-    //console.log('新文件名',ret);
-    return ret;
 
+exports.httpRequest = function (httpType, options, sendData, cb,encode) {
+    return httpRequest(httpType, options, sendData, cb,encode);
 };
-
-exports.getWeather = function(cb){
-    let ret = '';
-    httpxReq('http', 'v.juhe.cn/weather/index?cityname=%E4%B8%8A%E6%B5%B7&dtype=&format=&key=ffd9caaa66c61ad531bb259f135cbcc4', (result) => {
-
-        //应答的包括今日与将来的天气信息
-        let weather = JSON.parse(result);
-
-        //今日天气
-        let todayWeather = weather.result.today;
-
-        //明日日期
-        let now = new Date();
-        let nextDay = now.setTime(fmd(new Date(now.getTime() + 24 * 60 * 60 * 1000), 'yyyyMMdd'));
-
-        //明日天气
-        let nextDayWeather = weather.result.future['day_' + nextDay];
-        let nextDayWeatherDesc =
-            '天气'+nextDayWeather.weather+
-            '，气温'+nextDayWeather.temperature+
-            '，风力'+nextDayWeather.wind;
-
-        //计算两日的温差
-        let ndt = nextDayWeather.temperature.replace(/℃/g, '').split('~');
-        let tdt = todayWeather.temperature.replace(/℃/g, '').split('~');
-        let tdiff = [ndt[0] - tdt[0], ndt[1] - tdt[1]];
-
-
-        console.log(tdiff);
-
-        ret = '明日'+nextDayWeatherDesc+'。与今天相比，高温' + getDescription(tdiff[0])+' 低温' + getDescription(tdiff[1]);
-        cb(ret);
-    });
-};
-
-function getDescription(temperatureDiff){
-    let ret = '';
-    if(temperatureDiff>0)  ret = '【热'+temperatureDiff+'度】';
-    if(temperatureDiff<0)  ret = '【凉'+temperatureDiff+'度】';
-    if(temperatureDiff===0) ret = '气温相同';
-    return ret;
-}
-
 /**
  * Sending http/https request with sendData by GET/POST method
- *
- * @param httpType http/https
- * @param options  {host,path,method,port}
+ * API: https://nodejs.org/api/http.html#http_http_request_url_options_callback
+ *      https://nodejs.org/api/http.html#http_http_request_options_callback
+ * @param httpType {string} http|https
+ * @param options  {object} host and path(with querystring) are required , default method is GET}
  * @param sendData Data sent to host
  * @param cb callback function
  * @param encode default is utf-8
@@ -417,33 +502,184 @@ let httpRequest = function (httpType, options, sendData, cb,encode) {
     });
     req1.end(sendData);
 };
-exports.httpRequest = function (httpType, options, sendData, cb,encode) {
-    return httpRequest(httpType, options, sendData, cb,encode);
+
+
+let  httpxReq = function(httpType,url,cb){
+    let httpx = require(httpType);
+    let iconv = require("iconv-lite");
+
+    let _url=httpType+'://'+url;
+    httpx.get(_url, function (res) {
+
+        let datas = [];
+        let size = 0;
+
+        res.on('data', function (data) {
+
+            datas.push(data);
+            size += data.length;
+
+        });
+        res.on("end", function () {
+            let buff = Buffer.concat(datas, size);
+            let result = iconv.decode(buff, "utf8");
+            cb(result);
+
+        });
+    }).on("error", function (err) {
+        console.error(err,'httpx请求失败');
+    });
 };
-// httpRequest('https',{host:'www.baidu.com' ,path:'/','port':'443',method:'GET'},'',(result)=>{
-//     l.info('httpRequesttest',result);
-// });
+exports.httpxReq = function (httpType,url,cb) {
+    return httpxReq(httpType,url,cb);
+};
+
 
 
 /**
- * Checking cellphone number if valid
+ * Send event to a ws server
+ * reference: https://socket.io/docs/client-api/#socket-emit-eventname-args-ack
+ * @param url server's url
+ * @param message 消息内容
+ */
+let socketSend = function (url, message) {
+    let socket = require('socket.io-client')(url);
+    l.trace('send message');
+    socket.emit('event', message);
+
+};
+exports.socketSend = function (url, message) {
+    return socketSend(url, message);
+};
+//socketSend('http://localhost:3000','this is from utils');
+
+
+/**
+ * 功能：触发一个事件，由监听器对事件进行处理
+ * 场景：
+ * 1、业务流程中的埋点，关键场景，如上单、开工、完工等。在db.close()方法后、res.send()前调用。
+ * 2、系统异常时的埋点。在catch中调用
+ * 算法：
+ * 1、应用、系统相关的状态、活动在埋点处发出事件，由事件处理函数对外进行通知
+ * 2、www启动时，安装时间生成器emt，emt在utils中被引用，进而可被各个业务模块使用
+ * @param argsObject {object} 形如{data:p,type:'N_UIFUPD'}的参数
+ */
+exports.notify = function (argsObject) {
+    global.emt.emit('notify', argsObject);
+};
+
+
+
+/**
+ * Part A. Scene
+ */
+
+/**
+ * Nomalizate a file name
+ * @param maybeAsFileName 与文件名相关的内容
+ * @returns {string}
+ */
+exports.normalizeFileName = function(maybeAsFileName){
+    //暂不替换中文标点符号:.，。？
+    let ret = maybeAsFileName.replace(/[":&#$*|><,?\/\+\\\[\]]/g,'');
+    if(ret.length>=250)
+        ret = ret.substring(0,250);
+    //参考：https://www.cnblogs.com/moqing/archive/2016/07/13/5665126.html
+    //http://www.jb51.net/article/110516.htm
+    //http://www.jb51.net/article/84784.htm
+    //http://www.jb51.net/article/80544.htm
+    return ret;
+};
+
+/**
+ * Get weather
+ * @param cb
+ * @param city
+ */
+exports.getWeather = function(cb,city){
+    const cityUrlEncoded = require('querystring').encode({
+        "city":city,
+        "key":'bec43a3613373cc952d132e2677b136b'
+    });
+    let ret = '';
+    httpRequest('http',
+        {
+            host:'apis.juhe.cn',
+            path:'/simpleWeather/query?'+cityUrlEncoded
+        },
+        ''
+        ,(result) => {
+
+            //应答的包括今日与将来的天气信息
+            let weather = JSON.parse(result);
+
+            //今日天气
+            let todayWeather = weather.result.future[0];
+            //明日天气
+            let nextDayWeather = weather.result.future[1];
+
+            let nextDayWeatherDesc =
+                '天气'+nextDayWeather.weather+
+                '，气温'+nextDayWeather.temperature;
+
+            //计算两日的温差
+            let ndt = nextDayWeather.temperature.replace(/℃/g, '').split('/');
+            let tdt = todayWeather.temperature.replace(/℃/g, '').split('/');
+            let tdiff = [ndt[0] - tdt[0], ndt[1] - tdt[1]];
+
+            ret = '明日'+nextDayWeatherDesc+'。\n与今天比，高温' + getDescription(tdiff[0])+' 低温' + getDescription(tdiff[1]);
+            cb(ret);
+        },);
+};
+function getDescription(temperatureDiff){
+    let ret = '';
+    if(temperatureDiff>0)  ret = '【热'+temperatureDiff+'度】';
+    if(temperatureDiff<0)  ret = '【凉'+(0-temperatureDiff)+'度】';
+    if(temperatureDiff===0) ret = '【相同】';
+    return ret;
+}
+
+/**
+ * Generate connection string for mongodb
+ * @param url {string} eg: mongodb://%s:%s@www.abcdefnet.com:27117/test?authMechanism=%s
+ * @param user {string}
+ * @param passwd {string}
+ * @param auth {string}
+ * @returns {string} connection string. eg:http://ssdfsdfd
+ * Reference:https://docs.mongodb.com/manual/reference/connection-string/
+ */
+exports.getDburl = function (url,user,passwd,auth) {
+    let vuser = encodeURIComponent(user);
+    let vpassword = encodeURIComponent(passwd);
+
+    //https://nodejs.org/api/util.html#util_util_format_format_args
+    return require('util').format(url, vuser, vpassword, auth);
+};
+
+/**
+ * Checking cellphone's number if valid
  * @param str
  * @returns {boolean}
  */
 let isPoneAvailable = function (str) {
-    let myreg = /^[1][3,4,5,7,8][0-9]{9}$/;   //Another rule：/^(((13[0-9]{1})|(15[0-9]{1})|(18[0-9]{1}))+\d{8})$/
-    return myreg.test(str)
+    let myreg = /^1[3456789]\d{9}$/; //latest@2020 https://blog.csdn.net/z591102/article/details/104989395
+    return myreg.test(str);
+    //let myreg = /^[1][3,4,5,7,8][0-9]{9}$/;
+    //Another rule：/^(((13[0-9]{1})|(15[0-9]{1})|(18[0-9]{1}))+\d{8})$/
 };
 exports.isPoneAvailable = function (str) {
     return isPoneAvailable(str);
 };
-//l.info('Is the cellphone number valid?',isPoneAvailable('13362224037'));
-
 
 
 /**
- * 短信发送函数。
- * @param tpltId        短信模板ID，//短信模板的“ID”字段值，参考https://console.cloud.tencent.com/sms/smsContent/1400055205/0/10
+ * The third part's API
+ */
+
+/**
+ * Send a sms
+ * Reference:https://console.cloud.tencent.com/sms/smsContent/1400055205/0/10
+ * @param tpltId        短信模板ID，//短信模板的“ID”字段值，
  * @param phoneNumbers  接收短信的号码（文本数组），如：["17001826978", "18516257890"]
  * @param params        短信内容占位符（文本数组），如：["验证码002033", "有效期"]，params的元素个数，应与模板中的占位符数量相同，不能多也不能少。
  * @param cf  Object including appkey and appid。
@@ -473,55 +709,6 @@ exports.sendSms = function (tpltId, phoneNumbers, params ,cf) {
 //sendSms(88752,['17001826978'],['1234','60']);
 
 
-let randomString = function (len) {
-    len = len || 32;    //这个默认复制的方式很帅
-    let chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
-    /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
-    let maxPos = chars.length;
-    let pwd = '';
-    for (let i = 0; i < len; i++) {
-        pwd += chars.charAt(Math.floor(Math.random() * maxPos));
-    }
-    return pwd.toUpperCase();
-};
-exports.randomString = function (len) {
-    return randomString(len);
-};
-//console.log(randomString(4));
-
-/**
- * 功能：向指定的ws服务器发送event事件。
- * 技术参考：https://socket.io/docs/client-api/#socket-emit-eventname-args-ack
- * @param url
- * @param message 消息内容
- */
-let socketSend = function (url, message) {
-    let socket = require('socket.io-client')(url);
-    l.trace('send message');
-    socket.emit('event', message);
-
-};
-exports.socketSend = function (url, message) {
-    return socketSend(url, message);
-};
-//socketSend('http://localhost:3000','this is from utils');
-
-
-/**
- * 功能：触发一个事件，由监听器对事件进行处理
- * 场景：
- * 1、业务流程中的埋点，关键场景，如上单、开工、完工等。在db.close()方法后、res.send()前调用。
- * 2、系统异常时的埋点。在catch中调用
- * 算法：
- * 1、应用、系统相关的状态、活动在埋点处发出事件，由事件处理函数对外进行通知
- * 2、www启动时，安装时间生成器emt，emt在utils中被引用，进而可被各个业务模块使用
- *@param argsObject ：形如{data:p,type:'N_UIFUPD'}的参数
- */
-exports.notify = function (argsObject) {
-    global.emt.emit('notify', argsObject);
-};
-
-
 /**
  * 功能：将对象转换成“查询字符串”，查询参数按照字母表排序
  * 场景：对拟支付订单的信息进行签名。
@@ -531,7 +718,6 @@ exports.notify = function (argsObject) {
 exports.obj2queryString = function (args) {
     return obj2queryString(args);
 };
-
 let obj2queryString = function (args) {
     let keys = Object.keys(args);
     keys = keys.sort();
@@ -546,7 +732,7 @@ let obj2queryString = function (args) {
     }
     str = str.substr(1);
 
-    l.trace('对象->String:', str);
+    l.trace('obj2queryString():', str);
     return str;
 };
 
@@ -613,69 +799,3 @@ exports.getSpeakSpec = function (jsonData, fields, words) {
     }
     return ret;
 };
-
-/**
- * 功能：判断参数中的时间点是否晚于当前时间点
- * @param then
- * @returns {boolean}
- */
-exports.isLateThanNow=function(then){
-    let thenDate = new Date(then);
-    let now = new Date();
-
-    l.trace('thenDate:'+thenDate,'nowDate:'+now);
-    return thenDate.getTime()-now.getTime()>0
-};
-
-/**
- * 功能：获得比当前时间点晚若干小时的时间对象
- * @param hours 小时数
- * @param hasSecond time 中是否包含秒
- * @returns {{date: string, time: string}}
- */
-exports.getLater=function(hours,hasSecond){
-    let then= new Date(new Date().getTime()+hours*60*60*1000);
-    let thenTime = fmd(then,'hh:mm:ss');
-
-    let ret = {date:fmd(then,'yyyy-MM-dd'),time:hasSecond ? thenTime:thenTime.substring(0,thenTime.lastIndexOf(':'))};
-
-    l.trace('那时',then,'结果',ret);
-    return ret ;
-};
-
-/**
- * 检查字符串是否为Json格式
- * @param str 被检查的字符串
- * @returns {boolean}
- * 参考：https://blog.csdn.net/qq_26400953/article/details/77411520
- */
-exports.isJsonString=function(str) {
-    try {
-        if (typeof(JSON.parse(str)) === "object") {
-            return true;
-        }
-    } catch(e) {
-    }
-    return false ;
-};
-
-/**
- * 根据给定的截止日期获得新的截止日期
- * @param oldExpiredDate 原截止日期
- * @param addedDays 延期天数
- * @returns {string} 截止日期
- */
-let getNewExpiredDate = function (oldExpiredDate,addedDays){
-    let today = new Date();
-    let old_expired_date_ms = oldExpiredDate.getTime();
-    let new_expired_date = (
-        old_expired_date_ms >= today.getTime() ?
-            new Date(old_expired_date_ms).setDate(new Date(old_expired_date_ms).getDate()+addedDays) :
-            today.setDate(today.getDate()+addedDays)
-    );
-    return new Date(new_expired_date);//.toLocaleDateString();
-};
-exports.getNewExpiredDate = function (oldExpiredDate,addedDays) {
-    return getNewExpiredDate(oldExpiredDate,addedDays);
-};
-///console.log(getNewExpiredDate(new Date('2019-08-12'),30));
