@@ -108,6 +108,15 @@ exports.formatDate = function(date, style) {
 };
 
 /**
+ * Get before or after days’ Date
+ * @param days
+ */
+exports.getThatDate = function(days){
+    let today = new Date();
+    return today.setDate(today.getDate()+days);
+};
+
+/**
  * Get yyyyMMdd format date
  * @returns {string} eg: '20210309'
  */
@@ -352,20 +361,21 @@ exports.af = function(filename,content){
  * Generate a .xlsx file from a array including multiple rows
  * @param dataArray {Array} eg:[[1,3],['aa','bb'],[3,'dd']]
  * @param path {String} file path ended with /
- * @param filename {String} not need to include .xlsx in filename
+ * @param fileName {String} not need to include .xlsx in filename
+ * @param sheetName {String} sheet1 as default if not set.
  */
-exports.exp2xls = function(dataArray,path,filename) {
+exports.exp2xls = function(dataArray,path,fileName,sheetName) {
     let xlsx = require('node-xlsx');
     let fs = require('fs');
 
-    l.info('开始生成EXCEL');
+    l.info('Generating EXCEL ......');
     let file = xlsx.build([{
-        name: 'sheet1',
+        name: sheetName || 'sheet1',
         data: dataArray
-    }]);   //构建xlsx对象
+    }]);
 
-    fs.writeFileSync(path+filename+'.xlsx', file, 'binary'); // 写入
-    l.info('完成生成EXCEL');
+    fs.writeFileSync(path+fileName+'.xlsx', file, 'binary'); // 写入
+    l.info('Finish to Generate EXCEL.');
 };
 
 
@@ -436,7 +446,7 @@ function aesDecrypt(encryptedData,key,aesType,codeType){
  * @param hashType md5/hmac
  * @param algType md5/sha1/sha256/sha512
  * @param codeType hex/base64
- * @param key hmac使用的key
+ * @param key hmac use the key
  * @returns {Buffer | string | * }
  */
 function getHash(data,hashType,algType,codeType,key){
@@ -463,7 +473,9 @@ exports.httpRequest = function (httpType, options, sendData, cb,encode) {
     return httpRequest(httpType, options, sendData, cb,encode);
 };
 /**
- * Sending http/https request with sendData by GET/POST method
+ * Sending http/https request with sendData by GET/POST method.
+ * Not support binary file such as image,becase default encode is set to utf-8.
+ * If need to download image , choose downloadImage()
  * API: https://nodejs.org/api/http.html#http_http_request_url_options_callback
  *      https://nodejs.org/api/http.html#http_http_request_options_callback
  * @param httpType {string} http|https
@@ -471,6 +483,9 @@ exports.httpRequest = function (httpType, options, sendData, cb,encode) {
  * @param sendData Data sent to host
  * @param cb callback function
  * @param encode default is utf-8
+ *
+ * Other optional http modules,like 'got', may be intruduced in future.
+ * https://nodesource.com/blog/express-going-into-maintenance-mode
  */
 let httpRequest = function (httpType, options, sendData, cb,encode) {
     let http = require(httpType);
@@ -504,6 +519,13 @@ let httpRequest = function (httpType, options, sendData, cb,encode) {
 };
 
 
+/**
+ * httpsxReq is a GET case of httpRequest.
+ * Based http.get(),it's a simple version of httpRequest.
+ * @param httpType
+ * @param url
+ * @param cb
+ */
 let  httpxReq = function(httpType,url,cb){
     let httpx = require(httpType);
     let iconv = require("iconv-lite");
@@ -535,12 +557,60 @@ exports.httpxReq = function (httpType,url,cb) {
 };
 
 
+exports.downloadImage = function (url,fileName,cb) {
+    return downloadImage(url,fileName,cb);
+};
+async function downloadImage(url,fileName,cb){
+
+
+    const httpType = url.substring(0,url.indexOf('://'));
+    const urlTail = url.substring(url.indexOf('://')+3);
+
+    let httpx = require(httpType);
+    const req1 = httpx.request(httpType+'://'+urlTail
+        , (res) => {
+            let size = 0;
+            let ret = [];
+            res.on('data', (chunk) => {
+                ret.push(chunk);
+                size += chunk.length;
+                //console.log(`BODY: ${chunk}`);
+            });
+            res.on('end', () => {
+                let buff = Buffer.concat(ret, size);
+                const origionalFileName = url.substring(url.lastIndexOf('/')+1);
+                const fileType = origionalFileName.substring(origionalFileName.lastIndexOf('.'));
+                //console.log(origionalFileName,fileType);
+
+                //Default file name is timestamp+originalFileName
+                const fn = fileName ? fileName+fileType :  new Date().getTime()+'-'+origionalFileName
+                let fs = require('fs');
+                fs.writeFileSync(fn,buff,'binary',(err)=>{
+                    err ? console.log('Error occured when writing a image to local, please check it.'):''
+
+                    //If a callback function is set it'll be called
+                    cb? cb(fn):''
+
+                    // The other approach is to emit a event which
+                    // includes an object as a parameter of event handler method/listener
+                });
+
+            });
+        });
+    req1.on('error', (e) => {
+        console.error(`downloadImage:problem with request: ${e}`);
+    });
+    req1.on('uncaughtException', (e) => {
+        console.error(`downloadImage: uncaughtException: ${e}`);
+    });
+    req1.end('');
+}
 
 /**
  * Send event to a ws server
  * reference: https://socket.io/docs/client-api/#socket-emit-eventname-args-ack
  * @param url server's url
- * @param message 消息内容
+ * @param message content would be sent
  */
 let socketSend = function (url, message) {
     let socket = require('socket.io-client')(url);
