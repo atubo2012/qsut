@@ -2,7 +2,7 @@ let qsut = require('./index.js');
 
 
 let log = qsut.logger(__filename);
-log.info('哈哈哈');
+log.info('haha');
 let url1 = '/_open/auth';
 let url2 = '/_db';
 
